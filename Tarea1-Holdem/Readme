@@ -1,0 +1,17 @@
+Programas utilizados
+1. Netbeans
+2. MySql Workbench
+
+Pasos
+1. Se debe importar la BD en Mysql. El nombre de la BD es "Poker", en caso de cambiarlo debe modificar las lineas de conexión en el programa. Además, debe ingresar los datos del usuario en las lineas de conexión(en la clase "conexionBD"). 
+
+2. Se debe cambiar la cantidad máxima de conexiones en MySql con el siguiente comando:
+
+mysql --user="root" --password="PASSWORD" --execute='SET GLOBAL max_connections = n;'
+
+#n representa el numero máximo de conexiones 
+
+3. Cuando ejecute el programa, cambie la variable "limite" de la clase "main" para correr el programa la cantidad de veces que desee.
+
+
+

@@ -1,0 +1,11 @@
+id,cantidad,jugada,victorias,derrotas,empates
+1,94894,"Carta Alta    ",0,46404,48490
+2,126669,"Par           ",18390,29309,78970
+3,23494,"Doble Par     ",11606,2654,9234
+4,10512,"Trio          ",3705,2232,4575
+5,3561,"Escalera      ",2994,9,558
+6,398,"Color         ",356,5,37
+7,1245,"Full House    ",1131,26,88
+8,208,"Poquer        ",102,0,106
+9,19,"Escalera Color",18,0,1
+10,0,"Escalera Real ",0,0,0

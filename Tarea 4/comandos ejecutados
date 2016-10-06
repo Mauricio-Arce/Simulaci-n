@@ -1,0 +1,8 @@
+(generador-Fo '(0 1 2 3 ) '(18 47 24 11) #t "binomial.txt")
+(pruebaJiCuadrado #t (binomial 3 0.4267) "binomial.txt" 1)
+
+(generador-Fo '(0 1 2 3 4 5) '(25 55 65 35 20 10) #t "poisson.txt")
+(pruebaJiCuadrado #t (poisson 2) "poisson.txt" 1)
+
+(generador-Fo '((0 1000) (1000 2000) (2000 3000)) '(20 65 25) #f "normal.txt")
+((pruebaJiCuadrado #f (normal 1500 600) "normal.txt" 1000) 0 3000)

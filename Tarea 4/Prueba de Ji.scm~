@@ -1,0 +1,234 @@
+#lang scheme
+
+(define exponencial
+  (lambda (lam)
+    (lambda (x)
+      (cond ((< x 0) 0)
+            (else (* lam (exp (* -1 lam x))))))))
+
+(define cuad
+  (lambda (x)
+    (* x x)))
+
+
+(define normal
+  (lambda (media desv)
+    (lambda (x)
+      (/ (exp (* -1/2 (cuad (/ (- x media) desv))))
+         (* desv (sqrt (* 2 pi)))))))
+
+(define fact
+  (lambda (x)
+    (cond ((zero? x) 1)
+          (else (* x (fact (- x 1)))))))
+
+(define poisson
+  (lambda (lam)
+    (lambda (x)
+      (/ (* (exp (- lam))
+            (expt lam x))
+         (fact x)))))
+
+;; Lista de n a 1
+(define iota
+  (lambda (n)
+    (cond ((zero? n) '())
+          (else (cons n (iota (- n 1)))))))
+
+;; Coeficiente binomial
+(define cb
+  (lambda (n k)
+    (apply *
+     (map
+      (lambda (i) (/ (- n i -1) i))
+      (iota (- n k))))))
+
+(define binomial
+  (lambda (n p)
+    (lambda (k)
+      (* (cb n k) (expt p k) (expt (- 1 p) (- n k))))))
+
+(define geometrica
+  (lambda (p)
+    (lambda (x)
+      (* p (expt (- 1 p) (- x 1))))))
+
+(define tabla
+  (lambda (valores probabilidades)
+    (lambda (x)
+      (cadr (assoc x (map (lambda (x y) (list x y)) valores probabilidades))))))
+
+(define nveces
+  (lambda (n)
+    (lambda (m)
+      (* n m))))
+
+(define doble
+  (nveces 2))
+
+(define exponencial-2
+  (exponencial 2))
+
+;;(define iota
+;;  (lambda (n)
+;;    (iota-aux n '())))
+
+(define iota-aux
+  (lambda (n acum)
+    (cond ((zero? n) acum)
+          (else (iota-aux (- n 1) (cons n acum))))))
+
+(define simpson
+  (lambda (n)
+    (lambda (fun a b)
+      (let* ((h (/ (- b a) n))
+            (lista (append (list (fun a) (fun b))
+                           (map (lambda(i)
+                                  (cond ((even? i) (* 2 (fun(+ a (* i  h)))))
+                                        (else (* 4 (fun (+ a (* i h)))))))
+                           (iota (- n 1))))))
+        (* (/ h 3) (apply + lista))))))
+
+(define integral
+  (simpson 1000))
+
+
+(define conteo
+  (lambda (muestra-ordenada intervalo)
+    (conteo-aux muestra-ordenada
+                (list (car muestra-ordenada)
+                      (+ (car muestra-ordenada) intervalo)
+                      0)
+                intervalo)))
+
+(define conteo-aux
+  (lambda (muestra acum intervalo)
+    (cond ((null? muestra) (list acum))
+          ((< (car muestra) (cadr acum))
+           (conteo-aux (cdr muestra)
+                       (list (car acum) (cadr acum) (+ 1 (caddr acum)))
+                       intervalo))
+          (else
+           (cons acum (conteo-aux muestra (list (cadr acum)
+                                                (+ intervalo (cadr acum))
+                                                0)
+                                  intervalo))))))
+(define agrupar
+  (lambda (l)
+    (cond ((null? l) l)
+          (else (agrupar-aux (cdr l) (list (car l)))))))
+
+(define agrupar-aux
+  (lambda (l grupo)
+    (cond ((null? l) (list grupo))
+          ((equal? (car l) (car grupo))
+           (agrupar-aux (cdr l) (cons (car grupo) grupo)))
+          (else
+           (cons grupo (agrupar-aux (cdr l) (list (car l)))
+                 )))))
+
+(define pruebaJiCuadrado
+ (lambda (es-discreta intervalo)
+   (lambda (distribucion muestra)
+     (cond ( (eq? es-discreta #t)
+             (define datos (car (leer-archivo muestra)))
+             (define listaX-Fo (conteo (sort datos <) intervalo))
+             ;; (define listaX-Fo (conteo (sort muestra <) intervalo))
+             (ji-discreto listaX-Fo distribucion))
+           (else
+            (define datos (car (leer-archivo muestra)))
+            (define listaX1X2-Fo (conteo (sort datos <) intervalo)) ;;map intervalo con "integral a b" castear por ejemplo
+            (ji-continuo )                                           ;;0 1000 a simpson
+             #f)))))                                                  ;;muestra son los f observados, y con el intervalo ((0 1000) (1000 2000) (2000 3000))
+                                                                      ;;extraer los f esperados
+(define ji-discreto
+  (lambda (listaX-Fo distribucion)
+    (define n (calcular-n listaX-Fo))
+    (apply +(map (lambda (x) (ji-discreto-aux distribucion (caddr x) (car x) n)) listaX-Fo))))
+
+(define ji-continuo
+  (lambda (listaX-Fo distribucion)
+    (define n (calcular-n listaX-Fo))
+    (apply +(map (lambda (x) (ji-discreto-aux distribucion (caddr x) (car x) n)) listaX-Fo))))
+
+(define calcular-n
+  (lambda (listaX-Fo)
+    (apply +(map (lambda (x) (caddr x)) listaX-Fo))))
+ 
+(define ji-discreto-aux
+  (lambda (distribucion fo x n)
+    (estadistico fo (fe-discreta distribucion x n))))
+
+(define fe-discreta
+  (lambda (distribucion x n)
+    (frecuencia-esperada (distribucion x) n)))
+
+(define fe-continua
+  (lambda (distribucion x1 x2 n)
+    (frecuencia-esperada (- (distribucion x2) (distribucion x1)) n)))
+
+
+(define frecuencia-esperada
+  (lambda (probabilidad n)
+    (* probabilidad n)))
+
+(define estadistico
+  (lambda (fo fe)
+         (/ (estadistico-aux fo fe) fe)))
+
+(define estadistico-aux
+  (lambda (fo fe)
+    (expt (- fo fe) 2)))
+
+(define generador-Fo
+  (lambda (listaX cantidad discreta archivo)
+    (cond ((eq? discreta #t)
+           (define lista-discreta (generador-discreto listaX cantidad))
+           (escribir-archivo lista-discreta archivo))
+          (else (define lista-continua (generador-continuo listaX cantidad))
+                (escribir-archivo lista-continua archivo)))))
+
+(define generador-discreto
+  (lambda (listaX cantidad)
+    (cond ((eq? listaX '()) '())
+          (else (append (generador-discreto-aux (car listaX) (car cantidad)) (generador-discreto (cdr listaX) (cdr cantidad)))))))
+
+(define generador-discreto-aux
+  (lambda (valor cantidad)
+    (cond ((eq? cantidad 0) '())
+          (else (cons valor (generador-discreto-aux valor (- cantidad 1)))))))
+
+(define generador-continuo
+  (lambda (listaX cantidad)
+    (cond ((eq? listaX '()) '())
+          (else (append (generador-continuo-aux (caar listaX) (cadar listaX) (car cantidad)) (generador-continuo (cdr listaX) (cdr cantidad)))))))
+
+(define generador-continuo-aux
+  (lambda (a b cantidad)
+    (cond ((eq? cantidad 0) '())
+          (else (cons (crear-random a b) (generador-continuo-aux a b (- cantidad 1)))))))
+
+(define crear-random
+  (lambda (a b)
+    (define rand (random))
+    (cond ((eq? (pertenece a b rand) #t) rand)
+         (else (crear-random a b)))))
+
+(define pertenece
+  (lambda (a b valor)
+    (and (> valor a) (< valor b))))
+
+(define leer-archivo
+  (lambda (archivo)
+  (call-with-input-file archivo
+  (lambda (p)
+    (let f ((x (read p)))
+      (if (eof-object? x)
+          '()
+          (cons x (f (read p)))))))))
+
+(define escribir-archivo
+  (lambda (lista archivo)
+       (call-with-output-file archivo #:exists 'truncate
+        (lambda (salida)
+          (display lista salida)))))

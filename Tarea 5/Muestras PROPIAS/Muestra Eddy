@@ -1,0 +1,3 @@
+Muestra Extra
+(gva #t 1000 (binomial 10 0.77)  5 10 "muestra6")
+[47, 128, 198, 283, 237, 107]

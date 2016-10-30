@@ -2,7 +2,7 @@
 ;;Definiciones globales
 
 (define e 2.718281828)
-(define n-simpson 1000)
+(define n-simpson 10)
 (define pi 3.14159265359)
 (define particion 1/10)
 

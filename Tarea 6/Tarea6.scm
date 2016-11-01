@@ -233,11 +233,15 @@
     (define tsistema (map (lambda (x) (sistema x)) tablas))
     (define tablaFinal (unirTiemposMC tablas tespera tsistema))
     (escribir-archivo tablaFinal archivo)
-
-    (define TPAyVTA (map (lambda (x) (atencion x)) tablaFinal))
-    (define TPEyVTE (map (lambda (x) (TPVT x)) tespera))
-    (define TPSyVTS (map (lambda (x) (TPVT x)) tsistema))
-    (salidaMulticola TPAyVTA TPEyVTE TPSyVTS 1)))
+    
+    (define TPAyVTA (atencion (partirLista tablaFinal)))
+    (define TPEyVTE (TPVT (partirLista tespera)))
+    (define TPSyVTS (TPVT (partirLista tsistema)))
+    (descripcionSalida TPAyVTA TPEyVTE TPSyVTS)))
+    ;;(define TPAyVTA (map (lambda (x) (atencion x)) tablaFinal))
+    ;;(define TPEyVTE (map (lambda (x) (TPVT x)) tespera))
+    ;;(define TPSyVTS (map (lambda (x) (TPVT x)) tsistema))
+    ;;(salidaMulticola TPAyVTA TPEyVTE TPSyVTS 1)))
 
 (define multicola-aux
   (lambda (horas servidores)
@@ -246,6 +250,11 @@
            (define servidorActualizado (colocarElemento servidores (first horas)))
            (multicola-aux (cdr horas) servidorActualizado)))))
 
+(define partirLista
+  (lambda (lista)
+    (cond ((eq? lista '()) '())
+          (else (append (first lista) (partirLista (cdr lista)))))))
+  
 (define salidaMulticola
   (lambda (tiempoAtencion tiempoEspera tiempoSistema cantServidores)
     (cond ((eq? (length tiempoAtencion) 1)

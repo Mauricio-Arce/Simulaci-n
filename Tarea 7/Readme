@@ -1,0 +1,34 @@
+Archivo Tarea 6.scm
+HLL => horas de llegada
+TA => tiempos de atención
+
+1. Simulación Unicola-Multiservidor
+Comando
+(sistemas-colas #t distribuciónHLL rango-distribuciónHLL distribucionTA rangoTA horaInicio horaFinal cantidadServidores)
+
+Ejemplo
+(sistemas-colas #t (geometrica 0.3) '(0 3) (exponencial 3) '(0 4) '(8 0 0) '(9 0 0) 1)
+
+2. Simulación Multicola-Multiservidor
+Comando
+(sistemas-colas #f distribuciónHLL rango-distribuciónHLL distribucionTA rangoTA horaInicio horaFinal cantidadServidores)
+
+Ejemplo
+(sistemas-colas #f (normal 0 0.5) '(1 3) ((exponencial 0.5) '(0 3)) '(8 0 0) '(10 0 0) 2) 
+
+
+Archivo sistemasColasCSV.pl
+Comando
+perl sistemasColasCSV.pl archivoResultante.txt archivoDestino.csv
+
+Ejemplos
+perl sistemasColasCSV.pl multicola.txt ejemplo1.csv
+perl sistemasColasCSV.pl unicola.txt ejemplo2.csv
+
+
+(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #f) '(8 0 0) '(10 0 0))
+
+(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #t) '(8 0 0) '(10 0 0))
+
+(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #t) '(8 0 0) '(10 0 0))
+

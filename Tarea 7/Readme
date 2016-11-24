@@ -1,5 +1,5 @@
 Archivo Tarea 7.scm
-probEtapas => lista de probabilidad de entrada para cada etapa
+numEtapas => numero etapas
 distribucionES => distribucion de entrada al sistema
 rangoES => rango de la distribucion de entrada
 listaDSC => lista de distribucions para el sistema de colas de cada etapa
@@ -8,14 +8,15 @@ tipoSC => lista de booleanos correspondientes al tipo de sistema de cola de cada
 
 
 Comando
-(jobflows probEtapas distribuciónES rangoES listaDSC rangoDSC tipoSC horaInicio horaFinal)
+(jobflows numEtapas distribuciónES rangoES listaDSC rangoDSC tipoSC horaInicio horaFinal)
 
 Ejemplos
-(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #f) '(8 0 0) '(10 0 0))
+(jobflows 3 (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) (0 3) (1 3)) '(1 2 5) '(#t #t #f) '(8 0 0) '(10 0 0))
 
-(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #t) '(8 0 0) '(10 0 0))
+(jobflows 3 (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) (0 3) (1 3)) '(1 2 5) '(#t #t #t) '(8 0 0) '(10 0 0))
 
-(jobflows '(0.1 0.6 0.3) (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) ( 0 3) (1 3)) '(1 2 5) '(#t #t #t) '(8 0 0) '(10 0 0))
+
+(jobflows 3 (geometrica 0.3) '(0 3) (list (exponencial 0.5) (geometrica 0.3) (normal 0 0.5)) '((0 3) (0 3) (1 3)) '(1 2 5) '(#f #f #f) '(8 0 0) '(10 0 0))
 
 Archivo sistemasColasCSV.pl
 Comando

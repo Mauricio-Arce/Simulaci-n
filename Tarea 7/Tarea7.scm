@@ -11,44 +11,119 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;Detalles
-;;->probEtapas probabilidades de entrar en las etapas 
-;;->distribucionES distribucion entrada al sistema
-;;->distribucionTA lista de tiempos de atención
-;;->listaS lista Servidores
-;;->listaTSC lista tipo de sistema de colas
-
 (define jobflows
-  (lambda (probEtapas distribucionES rangoES distribucionTA rangoTA listaS listaTSC horaInicio horaFin)
-    (define numEtapas (reverse (iota (length probEtapas))))
-    (define etapas (sort (map (lambda (numero probabilidad atencion rango servidores multicola?)
-                                   (list numero probabilidad atencion rango servidores multicola?))
-                                 numEtapas probEtapas distribucionTA rangoTA listaS listaTSC) #:key second >))
+  (lambda (k distribucionES rangoES distribucionTA rangoTA listaS listaTSC horaInicio horaFin)
+    (define numEtapas (reverse (iota k)))
+    (define etapas (map (lambda (numero atencion rango servidores multicola?)
+                                   (list numero atencion rango servidores multicola?))
+                                 numEtapas distribucionTA rangoTA listaS listaTSC))
     (define etapaInicial (first (first etapas)))
     (define horas (unicolaHLL horaInicio horaFin distribucionES (first rangoES) (second rangoES) 1))
     (define horasLlegada (map (lambda (x) (append (list etapaInicial) (cdr x))) horas))
-    
-    (define etapasRecorridas (ingresarAlsistema etapas horasLlegada))
+   
+    (define primero (ingresarPrimeraHora (list (first horasLlegada)) etapas '() '()))
+    (define entradas (map (lambda (x) (list x)) (first primero)))
+    (define etapasRecorridas (ingresarAlsistema (cdr horasLlegada) etapas (second primero) entradas))
 
     (escribir-archivo etapasRecorridas "jobflows.txt")
     (define ordenEtapas (map (lambda (x) (first x)) etapas))
-    (define tiposCola (map (lambda (x) (sixth x)) etapas))
-    (define servidores (map (lambda (x) (fifth x)) etapas))
-    (imprimirDetalles etapasRecorridas tiposCola ordenEtapas horaInicio servidores)))
+    (define tiposCola (map (lambda (x) (fifth x)) etapas))
+    (define servidores (map (lambda (x) (fourth x)) etapas))
+    (define numeroServidores (apply +(map (lambda (x) x) servidores)))
+    (imprimirDetalles etapasRecorridas tiposCola ordenEtapas 0 servidores numeroServidores '())))
+
+(define ingresarPrimeraHora
+  (lambda (hora etapas listasEntrada tablasResultante)
+    (cond ((eq? etapas '()) (list (reverse listasEntrada) (reverse tablasResultante)))
+          (else
+           (define etapaActual (first etapas))
+           (define distribucionTA (second etapaActual))
+           (define rango (third etapaActual))
+           (define sistemaColas (sistemas-colas (fifth etapaActual) hora distribucionTA rango (fourth etapaActual)))
+           (define horasSalida (map (lambda (x) (unirEtapaHora (first etapaActual) x (fifth etapaActual))) (extraerHoras (fifth etapaActual) sistemaColas)))
+           (define tablaActualizada (cons sistemaColas tablasResultante))
+          
+           (cond ((eq? (fifth etapaActual) #t)
+                  (define entrante (append hora listasEntrada))
+                  (ingresarPrimeraHora horasSalida (cdr etapas) entrante tablaActualizada))
+                 (else
+                  (define nuevaHora (partirLista horasSalida))
+                  (define entrante (append hora listasEntrada))
+                  (ingresarPrimeraHora nuevaHora (cdr etapas) entrante tablaActualizada)))))))
 
 (define ingresarAlsistema
-  (lambda (etapas horasLlegada)
-    (cond ((eq? etapas '()) '())
-          (else (define etapaActual (first etapas))
-                (define distribucionTA (third etapaActual))
-                (define rango (fourth etapaActual))         
-                (define sistemaColas (sistemas-colas (sixth etapaActual) horasLlegada distribucionTA rango (fifth etapaActual)))
-                (define horasSalida (map (lambda (x) (unirEtapaHora (first etapaActual) x (sixth etapaActual))) (extraerHoras (sixth etapaActual) sistemaColas)))
-                (cond ((eq? (sixth etapaActual) #t) (cons sistemaColas (ingresarAlsistema (cdr etapas) (ordenarHoras horasSalida))))
-                      (else
-                       (define horas (ordenarHoras(partirLista horasSalida)))
-                       (cons sistemaColas (ingresarAlsistema (cdr etapas) horas))))))))
+  (lambda (horasLlegada etapas tablasResultantes listasEntrada)
+    (cond ((eq? horasLlegada '()) tablasResultantes)
+          (else
+           (define etapasActivas (map (lambda (x) (- x 1) ) (reverse (iota (length etapas)))))
+           (define etapasActualizadas (ingresarUsuario (first horasLlegada) etapas etapasActivas tablasResultantes listasEntrada))
+           (ingresarAlsistema (cdr horasLlegada) etapas (first etapasActualizadas) (second etapasActualizadas))))))
 
+(define ingresarUsuario
+  (lambda (hora etapas etapasActivas tablasActualizadas listasEntrante)
+    (cond ((eq? etapasActivas '()) (list tablasActualizadas listasEntrante))
+          (else
+           (define tiposSistemasCola (map (lambda (x) (fifth x)) etapas))
+           (define posicionEtapaOptima (posicionOptima hora tablasActualizadas tiposSistemasCola etapasActivas))
+           (define etapaOptima (list-ref etapas posicionEtapaOptima))
+           
+           (define listaES (list-set listasEntrante posicionEtapaOptima (append (list-ref listasEntrante posicionEtapaOptima) (list hora))))
+           (define listaOP (list-ref listaES posicionEtapaOptima))
+           (define nuevasEtapasActivas (remove posicionEtapaOptima etapasActivas))
+
+           (define actualizarSC (sistemas-colas (fifth etapaOptima) listaOP (second etapaOptima) (third etapaOptima) (fourth etapaOptima)))
+           
+           (define nuevasTablas (list-set tablasActualizadas posicionEtapaOptima actualizarSC))
+           (define horaSal (extraerH (cdr hora) actualizarSC (fifth etapaOptima)))
+           (ingresarUsuario horaSal etapas nuevasEtapasActivas nuevasTablas listaES)))))
+
+(define extraerH
+  (lambda (hora listaResultados tipoSC)
+    (cond ((eq? tipoSC #t) (extraerHunicola hora listaResultados))
+          (else (extraerHmulticola hora listaResultados)))))
+
+(define extraerHunicola
+  (lambda (hora listaResultados)
+    (cond ((eq? listaResultados '()) '())
+          (else
+           (cond ((eq? hora (second (first listaResultados))) (append '(0) (fifth (first listaResultados))))
+                  (else
+                   (extraerHunicola hora (cdr listaResultados))))))))
+
+(define extraerHmulticola
+  (lambda (hora listaResultados)
+    (cond ((eq? listaResultados '()) '())
+          (else
+           (define horaSal (extraerHunicola hora (first listaResultados)))
+           (cond ((eq? horaSal '()) (extraerHmulticola hora (cdr listaResultados)))
+                  (else horaSal))))))
+
+(define posicionOptima
+  (lambda (hora tabla tipoSC etapasActivas)
+    (define activos (sort (map (lambda (x) (list x (cantidadActivos hora (list-ref tabla x) (list-ref tipoSC x) 0)))
+                         etapasActivas) #:key second <))
+    (first (first activos))))
+
+(define cantidadActivos
+  (lambda (hora lista tipoCola cantidad)
+    (cond ((eq? lista '()) cantidad)
+          (else
+           (cond ((eq? tipoCola #t)
+                  (define usuario (first lista))
+                  (cond ((> (horasAsegundos (fifth usuario)) (horasAsegundos hora)) (cantidadActivos hora (cdr lista) tipoCola (+ cantidad 1)))
+                        (else (cantidadActivos hora (cdr lista) tipoCola cantidad))))
+                 (else
+                  (define cantidadServidor (cantidadActivosServidor hora (first lista) 0))
+                  (cantidadActivos hora (cdr lista) tipoCola (+ cantidad cantidadServidor))))))))
+
+(define cantidadActivosServidor
+  (lambda (hora listaServidor cantidad)
+    (cond ((eq? listaServidor '()) cantidad)
+          (else
+           (define usuario (first listaServidor))
+           (cond ((> (horasAsegundos (fifth usuario)) (horasAsegundos hora)) (cantidadActivosServidor hora (cdr listaServidor) (+ cantidad 1)))
+                 (else (cantidadActivosServidor hora (cdr listaServidor) cantidad)))))))
+           
 (define unirEtapaHora
   (lambda (numEtapa horas tipoCola)
     (cond ((eq? tipoCola #t)
@@ -79,18 +154,29 @@
     horaOrdenada))
 
 (define imprimirDetalles
-  (lambda (tabla boolCola numEtapas horaInicio servidores)
-    (cond ((eq? tabla '()) (println "----------------"))
+  (lambda (tabla boolCola numEtapas horasOsio servidores cantidadServ tablaFinal)
+    (cond ((eq? tabla '()) (salidaEtapaUnicola tablaFinal horasOsio cantidadServ))
           (else
-           (println "----------------")
-           (println (list "Etapa " (first numEtapas)))
            (cond ((eq? (first boolCola) #t)
-                  (salidaEtapaUnicola (first tabla) horaInicio (first servidores))
-                  (imprimirDetalles (cdr tabla) (cdr boolCola) (cdr numEtapas) horaInicio (cdr servidores)))
+                  (define nuevaTabla (append (first tabla) tablaFinal))
+                  (define osioEtapa (calcularOsioServidor (reverse (first tabla))))
+                  (imprimirDetalles (cdr tabla) (cdr boolCola) (cdr numEtapas) (+ osioEtapa horasOsio) (cdr servidores) cantidadServ nuevaTabla))
                  (else
-                  (salidaEtapaMulticola (first tabla) horaInicio (first servidores))
-                  (imprimirDetalles (cdr tabla) (cdr boolCola) (cdr numEtapas) horaInicio (cdr servidores))))))))
+                  (define osioEtapa (apply +(map (lambda (x) (calcularOsioServidor (reverse x))) (first tabla))))
+                  (define nuevaTabla (append (partirLista (first tabla)) tablaFinal))
+                  (imprimirDetalles (cdr tabla) (cdr boolCola) (cdr numEtapas) (+ horasOsio osioEtapa) (cdr servidores) cantidadServ nuevaTabla)))))))
     
+(define calcularOsioServidor
+  (lambda (cola)
+    (define horaInicio (horasAsegundos (fourth (first cola))))
+    (define horaFin (horasAsegundos (fifth (last cola))))
+    (define horasTrabajo (- horaFin horaInicio))
+    (define horasTrabajadas (apply +(map (lambda (x) (horasAsegundos x)) (osio cola))))
+    (cond ((>= horasTrabajadas horasTrabajo) (- horasTrabajadas horasTrabajo))
+          (else
+           (define osioServidor (- horasTrabajo horasTrabajadas))
+           osioServidor))))
+
 (define salidaEtapaMulticola
   (lambda (tablaServidores horaInicio servidores)
     (define tespera (map (lambda (x) (espera x)) tablaServidores))
@@ -106,14 +192,12 @@
     (descripcionSalida TPAyVTA TPEyVTE TPSyVTS TPOS)))
 
 (define salidaEtapaUnicola
-  (lambda (tabla horaInicio servidores)
+  (lambda (tabla horasOsio servidores)
     (define TPAyVTA (atencion tabla))
     (define TPEyVTE (TPVT (espera tabla)))
     (define tiempo-osio (osio tabla))
     (define TPSyVTS (TPVT (sistema tabla)))
-    (define horaUltimoAtendido (fifth (first tabla)))
-    (define horasTrabajo (segundosAhoras (- (horasAsegundos horaUltimoAtendido) (horasAsegundos horaInicio))))
-    (define TPOS (tiempoOsio horasTrabajo tiempo-osio servidores))
+    (define TPOS (segundosAhoras (/ horasOsio servidores)))
     (descripcionSalida TPAyVTA TPEyVTE TPSyVTS TPOS)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -149,21 +233,14 @@
     (define primeros-atendidos (salidas primeros))
     
     (define tabla-temporal (unicola-aux primeros tablaActualizada (last primeros) primeros-atendidos servidores))
-    ;;(define TPAyVTA (atencion tabla-temporal))
 
     (define tiempo-espera (espera tabla-temporal))
-    ;;(define TPEyVTE (TPVT (espera tabla-temporal)))
     (define tiempoColEspera (unirColumnas tabla-temporal tiempo-espera))
 
     (define tiempo-sistema (sistema tabla-temporal))
-    ;;(define tiempo-osio (osio tabla))
-    ;;(define TPSyVTS (TPVT (sistema tabla-temporal)))
-    ;;(define TPOS (tiempoOsio horasTrabajo tiempo-osio servidores))
     
     (define tabla (unirColumnas tiempoColEspera tiempo-sistema))
     tabla))
-    ;;(escribir-archivo (reverse tabla) archivo)
-    ;;(descripcionSalida TPAyVTA TPEyVTE TPSyVTS TPOS)))
 
 (define unicola-aux
   (lambda (tablaFinal tablaTemporal anterior listaSalida servidores)
@@ -178,7 +255,7 @@
 
 (define primerosAtendidos
   (lambda (cola n)
-    (cond ((zero? n) '())
+    (cond ((or (zero? n) (eq? cola '()))'())
           (else
            (define primero-cola (car cola))
            (define primero-atendido (cons (second primero-cola) (append (list (ingresarTiempo (second primero-cola) (third primero-cola))))))
@@ -187,7 +264,7 @@
 
 (define quitarPrimeros
   (lambda (tabla n)
-    (cond ((zero? n) tabla)
+    (cond ((or (zero? n) (eq? tabla '())) tabla)
          (else (quitarPrimeros (cdr tabla) (- n 1))))))
 
 (define salidas
@@ -210,13 +287,6 @@
     (define tsistema (map (lambda (x) (sistema x)) tablas))
     (define tosio (map (lambda (x) (osio x)) tablas))
     (define tablaFinal (unirTiemposMC tablas tespera tsistema))
-    ;;(escribir-archivo tablaFinal archivo)
-    
-    ;;(define TPAyVTA (atencion (partirLista tablaFinal)))
-    ;;(define TPEyVTE (TPVT (partirLista tespera)))
-    ;;(define TPSyVTS (TPVT (partirLista tsistema)))
-    ;;(define TPOS (tiempoOsio horasTrabajo (partirLista tosio) servidores))
-    ;;(descripcionSalida TPAyVTA TPEyVTE TPSyVTS TPOS)))
     tablaFinal))   
 
 (define multicola-aux
@@ -412,7 +482,7 @@
 (define tiempoOsio
   (lambda (horasTrabajo tiempoSistema servidores)
     (define horasTrabajadas (apply +(map (lambda (x) (horasAsegundos x)) tiempoSistema)))
-    (define osio (segundosAhoras (/ (- (* (horasAsegundos horasTrabajo) servidores) horasTrabajadas) servidores)))
+    (define osio (segundosAhoras (/ (- (* horasTrabajo servidores) (/ horasTrabajadas servidores)) servidores)))
     osio))
 
 (define tiempoES
